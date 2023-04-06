@@ -13,7 +13,7 @@ type (
 	Catch func(*error)
 )
 
-func (l *Logger) Bind(data map[string]any) (Print, Debug, Check, Catch) {
+func (l *logger) Bind(data map[string]any) (Print, Debug, Check, Catch) {
 	return func(mesg string, args ...any) {
 			l.ch <- &item{
 				when: time.Now(),
