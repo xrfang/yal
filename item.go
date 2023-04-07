@@ -10,11 +10,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type item struct {
-	when  time.Time
-	mesg  string
-	data  map[string]any
-	debug bool //是否为debug信息
+type LogItem struct {
+	When  time.Time
+	Mesg  string
+	Data  map[string]any
+	Level byte //0=普通消息，1=DEBUG消息
 	/*
 		- 20230406_114456.123: something....
 		  callstack:
@@ -25,7 +25,7 @@ type item struct {
 	*/
 }
 
-func (li *item) Trace() {
+func (li *LogItem) Trace() {
 	var st []string
 	n := 1
 	for {
@@ -46,18 +46,18 @@ func (li *item) Trace() {
 		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
 	}
 	if len(st) > 0 {
-		if li.data == nil {
-			li.data = make(map[string]any)
+		if li.Data == nil {
+			li.Data = make(map[string]any)
 		}
-		li.data["callstack"] = st
+		li.Data["callstack"] = st
 	}
 }
 
-func (li item) Flush(w io.Writer) error {
-	data := li.data
+func (li LogItem) Flush(w io.Writer) error {
+	data := li.Data
 	if data == nil {
 		data = make(map[string]any)
 	}
-	data[li.when.Format("20060102_150405.000")] = li.mesg
+	data[li.When.Format("20060102_150405.000")] = li.Mesg
 	return yaml.NewEncoder(w).Encode([]map[string]any{data})
 }

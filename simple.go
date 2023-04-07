@@ -12,6 +12,6 @@ func (sh SimpleHandler) Name() string {
 
 func (sh SimpleHandler) Done() {}
 
-func (sh SimpleHandler) Emit(li *item) {
+func (sh SimpleHandler) Emit(li *LogItem) {
 	li.Flush(sh)
 }

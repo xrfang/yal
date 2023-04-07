@@ -15,17 +15,17 @@ type (
 
 func (l *logger) Bind(data map[string]any) (Print, Debug, Check, Catch) {
 	return func(mesg string, args ...any) {
-			l.ch <- &item{
-				when: time.Now(),
-				mesg: fmt.Sprintf(mesg, args...),
-				data: data,
+			l.ch <- &LogItem{
+				When: time.Now(),
+				Mesg: fmt.Sprintf(mesg, args...),
+				Data: data,
 			}
 		}, func(mesg string, args ...any) {
-			l.ch <- &item{
-				when:  time.Now(),
-				mesg:  fmt.Sprintf(mesg, args...),
-				data:  data,
-				debug: true,
+			l.ch <- &LogItem{
+				When:  time.Now(),
+				Mesg:  fmt.Sprintf(mesg, args...),
+				Data:  data,
+				Level: 1,
 			}
 		}, func(e any, ntfy ...any) {
 			switch v := e.(type) {
@@ -52,10 +52,10 @@ func (l *logger) Bind(data map[string]any) (Print, Debug, Check, Catch) {
 				return
 			case error:
 				*err = e
-				li := item{
-					when: time.Now(),
-					mesg: e.Error(),
-					data: data,
+				li := LogItem{
+					When: time.Now(),
+					Mesg: e.Error(),
+					Data: data,
 				}
 				li.Trace()
 				l.ch <- &li

@@ -2,7 +2,6 @@ package yal
 
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -11,78 +10,45 @@ const queueLen = 64
 type (
 	Handler interface {
 		Done()
-		Emit(*item)
+		Emit(*LogItem)
 		Name() string
+		SetLevel(int)
+		SetRotate(int, int)
 	}
 	logger struct {
-		ch  chan *item
-		dbg bool
-		hm  map[string]Handler
-		sync.Mutex
+		ch chan *LogItem
+		lh Handler
 	}
 )
 
-func NewLogger(dbg bool) *logger {
-	l := logger{
-		ch:  make(chan *item, queueLen),
-		dbg: dbg,
-		hm:  make(map[string]Handler),
-	}
+func NewLogger(h Handler) *logger {
+	l := logger{ch: make(chan *LogItem, queueLen), lh: h}
 	go func() {
 		for {
 			li := <-l.ch
 			if li == nil {
-				for _, h := range l.hm {
-					h.Done()
-				}
+				l.lh.Done()
 				break
 			}
-			for _, h := range l.hm {
-				if !li.debug && l.dbg {
-					h.Emit(li)
-				}
-			}
+			l.lh.Emit(li)
 		}
 	}()
 	return &l
 }
 
-func (l *logger) GetDebug() bool {
-	return l.dbg
-}
-
-func (l *logger) SetDebug(dbg bool) {
-	l.dbg = dbg
-}
-
-func (l *logger) AddHandler(h Handler) {
-	l.Lock()
-	defer l.Unlock()
-	l.hm[h.Name()] = h
-}
-
-func (l *logger) DelHandler(name string) Handler {
-	l.Lock()
-	defer l.Unlock()
-	h := l.hm[name]
-	delete(l.hm, name)
-	return h
-}
-
 func (l *logger) Log(data map[string]any, mesg string, args ...any) {
-	l.ch <- &item{
-		when:  time.Now(),
-		mesg:  fmt.Sprintf(mesg, args...),
-		data:  data,
-		debug: false,
+	l.ch <- &LogItem{
+		When: time.Now(),
+		Mesg: fmt.Sprintf(mesg, args...),
+		Data: data,
 	}
 }
 
 func (l *logger) Dbg(data map[string]any, mesg string, args ...any) {
-	l.ch <- &item{
-		when:  time.Now(),
-		mesg:  fmt.Sprintf(mesg, args...),
-		data:  data,
-		debug: true,
+	l.ch <- &LogItem{
+		When:  time.Now(),
+		Mesg:  fmt.Sprintf(mesg, args...),
+		Data:  data,
+		Level: 1,
 	}
 }
