@@ -1,6 +1,7 @@
 package yal
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"runtime"
@@ -103,6 +104,8 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 			ss = []string{strconv.FormatFloat(float64(v), 'g', -1, 64)}
 		case float64:
 			ss = []string{strconv.FormatFloat(v, 'g', -1, 64)}
+		case []byte:
+			ss = strings.Split(hex.Dump(v), "\n")
 		case complex64:
 			ss = []string{strconv.FormatComplex(complex128(v), 'g', -1, 128)}
 		case complex128:
