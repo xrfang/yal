@@ -54,6 +54,7 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 		}
 	}
 	defer func() { recover() }()
+	write([]byte{'-', ' '})
 	write([]byte(li.When.Format("20060102_150405.000")))
 	write([]byte{':', ' '})
 	write([]byte(li.Mesg))
