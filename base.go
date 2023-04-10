@@ -42,6 +42,7 @@ func NewLogger(h Handler) *logger {
 
 func format(data map[string]any, mesg string, args ...any) (string, map[string]any) {
 	attr := map[string]any{}
+parse:
 	for i := 0; i < len(args); i += 2 {
 		if i+1 >= len(args) {
 			break
@@ -51,7 +52,7 @@ func format(data map[string]any, mesg string, args ...any) (string, map[string]a
 			attr[args[i].(string)] = args[i+1]
 		default:
 			attr[badKey] = args[i]
-			break
+			break parse
 		}
 	}
 	ms := mtx.FindAllStringSubmatch(mesg, -1)
