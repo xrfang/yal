@@ -15,15 +15,17 @@ type (
 
 func (l *logger) Bind(data map[string]any) (Print, Debug, Check, Catch) {
 	return func(mesg string, args ...any) {
+			mesg, data := format(data, mesg, args...)
 			l.ch <- &LogItem{
 				When: time.Now(),
-				Mesg: fmt.Sprintf(mesg, args...),
+				Mesg: mesg,
 				Data: data,
 			}
 		}, func(mesg string, args ...any) {
+			mesg, data := format(data, mesg, args...)
 			l.ch <- &LogItem{
 				When:  time.Now(),
-				Mesg:  fmt.Sprintf(mesg, args...),
+				Mesg:  mesg,
 				Data:  data,
 				Level: 1,
 			}
@@ -51,7 +53,9 @@ func (l *logger) Bind(data map[string]any) (Print, Debug, Check, Catch) {
 			case nil:
 				return
 			case error:
-				*err = e
+				if err != nil {
+					*err = e
+				}
 				li := LogItem{
 					When: time.Now(),
 					Mesg: e.Error(),

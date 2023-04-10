@@ -15,14 +15,6 @@ type LogItem struct {
 	Mesg  string
 	Data  map[string]any
 	Level byte //0=普通消息，1=DEBUG消息
-	/*
-		- 20230406_114456.123: something....
-		  callstack:
-		  - line1
-		  - line2
-		  arg1: value1
-		  arg2: value2
-	*/
 }
 
 func (li *LogItem) Trace() {

@@ -2,10 +2,14 @@ package yal
 
 import (
 	"fmt"
-	"time"
+	"regexp"
+	"strings"
 )
 
-const queueLen = 64
+const (
+	queueLen = 64
+	badKey   = "!BADKEY"
+)
 
 type (
 	Handler interface {
@@ -36,19 +40,40 @@ func NewLogger(h Handler) *logger {
 	return &l
 }
 
-func (l *logger) Log(data map[string]any, mesg string, args ...any) {
-	l.ch <- &LogItem{
-		When: time.Now(),
-		Mesg: fmt.Sprintf(mesg, args...),
-		Data: data,
+func format(data map[string]any, mesg string, args ...any) (string, map[string]any) {
+	attr := map[string]any{}
+	for i := 0; i < len(args); i += 2 {
+		if i+1 >= len(args) {
+			break
+		}
+		switch args[i].(type) {
+		case string:
+			attr[args[i].(string)] = args[i+1]
+		default:
+			attr[badKey] = args[i]
+			break
+		}
 	}
+	ms := mtx.FindAllStringSubmatch(mesg, -1)
+	for _, m := range ms {
+		subst := attr[m[1]]
+		if subst != nil {
+			s := fmt.Sprintf("%v", subst)
+			mesg = strings.ReplaceAll(mesg, m[0], s)
+			delete(attr, m[1])
+		}
+	}
+	if data == nil {
+		return mesg, attr
+	}
+	for k, v := range attr {
+		data[k] = v
+	}
+	return mesg, data
 }
 
-func (l *logger) Dbg(data map[string]any, mesg string, args ...any) {
-	l.ch <- &LogItem{
-		When:  time.Now(),
-		Mesg:  fmt.Sprintf(mesg, args...),
-		Data:  data,
-		Level: 1,
-	}
+var mtx *regexp.Regexp
+
+func init() {
+	mtx = regexp.MustCompile(`{{(\w+)}}`)
 }
