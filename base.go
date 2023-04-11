@@ -13,7 +13,6 @@ const (
 
 type (
 	Handler interface {
-		Close() error
 		Emit(LogItem)
 	}
 	Options struct {

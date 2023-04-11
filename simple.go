@@ -7,10 +7,8 @@ type simpleHandler struct {
 }
 
 func (sh simpleHandler) Emit(li LogItem) {
-	li.Flush(sh)
+	li.flush(sh)
 }
-
-func (sh simpleHandler) Close() error { return nil }
 
 func NewSimpleLogger(w io.Writer) *logger {
 	sh := simpleHandler{w}

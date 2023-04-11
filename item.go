@@ -2,9 +2,7 @@ package yal
 
 import (
 	"encoding/hex"
-	"fmt"
 	"io"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,32 +20,6 @@ var (
 	stk = []byte("  callstack:\n")
 )
 
-func trace(full bool) []string {
-	var st []string
-	n := 1
-	for {
-		n++
-		pc, file, line, ok := runtime.Caller(n)
-		if !ok {
-			break
-		}
-		f := runtime.FuncForPC(pc)
-		name := f.Name()
-		if strings.HasPrefix(name, "runtime.") {
-			continue
-		}
-		fn := strings.Split(file, "/")
-		if len(fn) > 1 {
-			file = strings.Join(fn[len(fn)-2:], "/")
-		}
-		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
-		if !full {
-			break
-		}
-	}
-	return st
-}
-
 func trimRight(str string) string {
 	for i := len(str); i > 0; i-- {
 		if str[i-1] > 32 {
@@ -57,7 +29,13 @@ func trimRight(str string) string {
 	return ""
 }
 
-func (li LogItem) Flush(w io.Writer) (err error) {
+func (li *LogItem) popAttr(name string) any {
+	attr := li.Attr[name]
+	delete(li.Attr, name)
+	return attr
+}
+
+func (li *LogItem) flush(w io.Writer) (err error) {
 	write := func(buf []byte) {
 		_, err = w.Write(buf)
 		if err != nil {

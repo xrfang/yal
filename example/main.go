@@ -17,7 +17,7 @@ func task(g yal.Emitter, r *http.Request) {
 }
 
 func main() {
-	L, err := yal.NewRotatedLogger(".", 0, 0)
+	L, err := yal.NewRotatedLogger(".", 1024, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -26,15 +26,14 @@ func main() {
 	L.Filter = func(li *yal.LogItem) {
 		li.Mesg += "!!!"
 	}
-	defer L.Close()
 	log = L.Log()
 	dbg = L.Dbg()
 	assert = L.Check()
 	catch = L.Catch()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		src := r.RemoteAddr
-		log := L.Log("client", src)
-		defer catch(nil, "client", src)
+		log := L.Log("client", src, "basename", "access.log")
+		defer catch(nil, "client", src, "basename", "errors.log")
 		task(log, r)
 	})
 	svr := http.Server{

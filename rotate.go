@@ -1,9 +1,12 @@
 package yal
 
 import (
-	"fmt"
+	"compress/gzip"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -11,16 +14,13 @@ import (
 const queueLen = 32
 
 type (
-	fileHandle struct {
-		f *os.File
-		t time.Time
-	}
 	rotatedHandler struct {
 		dir   string
-		split int
+		split int64
 		keep  int
 		ch    chan LogItem
-		fhm   sync.Map //map[string]*fileHandle
+		fhm   map[string]*os.File
+		sync.Mutex
 	}
 )
 
@@ -28,50 +28,98 @@ func (rh *rotatedHandler) Emit(li LogItem) {
 	rh.ch <- li
 }
 
-func (rh *rotatedHandler) baseName(li LogItem) string {
-	base, _ := li.Attr["basename"].(string)
-	if base == "" {
-		return "log"
+func (rh *rotatedHandler) getHandle(li *LogItem) (string, *os.File, error) {
+	rh.Lock()
+	defer rh.Unlock()
+	base := "log"
+	if v := li.popAttr("basename"); v != nil {
+		base = v.(string)
 	}
-	return base
+	if f := rh.fhm[base]; f != nil {
+		return base, f, nil
+	}
+	fp := filepath.Join(rh.dir, base)
+	f, err := os.OpenFile(fp, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		return "", nil, err
+	}
+	rh.fhm[base] = f
+	return base, f, nil
 }
 
-func (rh *rotatedHandler) getHandle(li LogItem) (*os.File, error) {
-	base := rh.baseName(li)
-	v, _ := rh.fhm.Load(base)
-	if v == nil {
-		fp := filepath.Join(rh.dir, base)
-		//TODO: rotate fp!
-		f, err := os.OpenFile(fp, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-		if err != nil {
-			return nil, err
-		}
-		rh.fhm.Store(base, &fileHandle{f: f, t: time.Now()})
-		return f, nil
-	}
-	fh := v.(*fileHandle)
-	fh.t = time.Now()
-	rh.fhm.Store(base, fh)
-	return fh.f, nil
+func (rh *rotatedHandler) delHandle(name string) {
+	rh.Lock()
+	defer rh.Unlock()
+	delete(rh.fhm, name)
 }
 
 func (rh *rotatedHandler) ingest() {
 	for {
 		li := <-rh.ch
-		f, err := rh.getHandle(li)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "RotatedHandler.ingest: %v\n", err)
+		base, f, err := rh.getHandle(&li)
+		if onErr(err) {
 			continue
 		}
-		li.Flush(f)
+		li.flush(f)
+		if rh.rotate(f) {
+			rh.delHandle(base)
+		}
 	}
 }
 
-func (rh *rotatedHandler) rotate() {
-	fmt.Println("TODO: log rotating...")
+func (rh *rotatedHandler) rotate(f *os.File) bool {
+	defer func() {
+		if e := recover(); e != nil {
+			onErr(e.(error))
+		}
+	}()
+	st, err := f.Stat()
+	assert(err)
+	if st.Size() < rh.split {
+		return false
+	}
+	assert(f.Close())
+	fn := f.Name()
+	assert(os.Rename(fn, fn+"."+time.Now().Format("20060102_150405")))
+	go func(n string) {
+		rh.Lock()
+		defer rh.Unlock()
+		oldLogs, _ := filepath.Glob(n + ".*")
+		var backups []string
+		for _, ol := range oldLogs {
+			if strings.HasSuffix(ol, ".gz") {
+				backups = append(backups, ol)
+				continue
+			}
+			func(fn string) {
+				defer func() {
+					if e := recover(); err != nil {
+						onErr(e.(error))
+						return
+					}
+					os.Remove(fn)
+					backups = append(backups, fn+".gz")
+				}()
+				f, err := os.Open(fn)
+				assert(err)
+				defer f.Close()
+				g, err := os.Create(fn + ".gz")
+				assert(err)
+				defer func() { assert(g.Close()) }()
+				zw, _ := gzip.NewWriterLevel(g, gzip.BestSpeed)
+				defer func() { assert(zw.Close()) }()
+				_, err = io.Copy(zw, f)
+				assert(err)
+			}(ol)
+		}
+		sort.Slice(backups, func(i, j int) bool { return backups[i] < backups[j] })
+		for len(backups) >= rh.keep {
+			os.Remove(backups[0])
+			backups = backups[1:]
+		}
+	}(fn)
+	return true
 }
-
-func (rh *rotatedHandler) Close() error { return nil }
 
 func NewRotatedLogger(dir string, split, keep int) (*logger, error) {
 	dir, err := filepath.Abs(dir)
@@ -89,9 +137,10 @@ func NewRotatedLogger(dir string, split, keep int) (*logger, error) {
 	}
 	rh := rotatedHandler{
 		dir:   dir,
-		split: split,
+		split: int64(split),
 		keep:  keep,
 		ch:    make(chan LogItem, queueLen),
+		fhm:   make(map[string]*os.File),
 	}
 	go rh.ingest()
 	return NewLogger(Options{}, &rh), nil
