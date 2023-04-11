@@ -112,7 +112,7 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 		case complex128:
 			ss = []string{strconv.FormatComplex(v, 'g', -1, 128)}
 		default:
-			ss = []string{"!BADVALUE"}
+			ss = []string{badVal}
 		}
 		switch len(ss) {
 		case 1:

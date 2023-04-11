@@ -9,6 +9,7 @@ import (
 const (
 	queueLen = 64
 	badKey   = "!BADKEY"
+	badVal   = "!BADVAL"
 )
 
 type (
