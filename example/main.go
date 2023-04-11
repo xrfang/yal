@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"go.xrfang.cn/yal"
@@ -18,7 +17,10 @@ func task(g yal.Emitter, r *http.Request) {
 }
 
 func main() {
-	L := yal.NewSimpleLogger(os.Stdout)
+	L, err := yal.NewRotatedLogger(".", 0, 0)
+	if err != nil {
+		panic(err)
+	}
 	L.Debug = true
 	L.Trace = true
 	L.Filter = func(li *yal.LogItem) {

@@ -2,17 +2,17 @@ package yal
 
 import "io"
 
-type SimpleHandler struct {
+type simpleHandler struct {
 	io.Writer
 }
 
-func (sh SimpleHandler) Emit(li LogItem) {
+func (sh simpleHandler) Emit(li LogItem) {
 	li.Flush(sh)
 }
 
-func (sh SimpleHandler) Close() error { return nil }
+func (sh simpleHandler) Close() error { return nil }
 
 func NewSimpleLogger(w io.Writer) *logger {
-	sh := SimpleHandler{w}
+	sh := simpleHandler{w}
 	return NewLogger(Options{}, sh)
 }
