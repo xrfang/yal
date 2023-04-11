@@ -12,13 +12,17 @@ import (
 )
 
 type LogItem struct {
-	When  time.Time
-	Mesg  string
-	Data  map[string]any
-	Level byte //0=普通消息，1=DEBUG消息
+	When time.Time
+	Mesg string
+	Attr map[string]any
 }
 
-func (li *LogItem) Trace() {
+var (
+	yml = []byte{'|', '\n', ' ', ' ', ' ', ' ', '-', ' ', ':', ' '}
+	stk = []byte("  callstack:\n")
+)
+
+func trace(full bool) []string {
 	var st []string
 	n := 1
 	for {
@@ -37,13 +41,20 @@ func (li *LogItem) Trace() {
 			file = strings.Join(fn[len(fn)-2:], "/")
 		}
 		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
-	}
-	if len(st) > 0 {
-		if li.Data == nil {
-			li.Data = make(map[string]any)
+		if !full {
+			break
 		}
-		li.Data["callstack"] = st
 	}
+	return st
+}
+
+func trimRight(str string) string {
+	for i := len(str); i > 0; i-- {
+		if str[i-1] > 32 {
+			return str[:i]
+		}
+	}
+	return ""
 }
 
 func (li LogItem) Flush(w io.Writer) (err error) {
@@ -54,14 +65,14 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 		}
 	}
 	defer func() { recover() }()
-	write([]byte{'-', ' '})
+	write(yml[6:8]) //'-', ' '
 	write([]byte(li.When.Format("20060102_150405.000")))
-	write([]byte{':', ' '})
+	write(yml[8:]) //':', ' '
 	write([]byte(li.Mesg))
-	write([]byte{'\n'})
+	write(yml[1:2]) //'\n'
 	var keys []string
 	var call []string
-	for k, v := range li.Data {
+	for k, v := range li.Attr {
 		if k == "callstack" {
 			call = v.([]string)
 		} else {
@@ -70,13 +81,13 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		write([]byte{' ', ' '})
+		write(yml[2:4]) //' ', ' '
 		write([]byte(k))
-		write([]byte{':'})
+		write(yml[8:]) //':', ' '
 		var ss []string
-		switch v := li.Data[k].(type) {
+		switch v := li.Attr[k].(type) {
 		case string:
-			ss = strings.Split(strings.TrimRight(v, " \n\r\t\v"), "\n")
+			ss = strings.Split(trimRight(v), "\n")
 		case bool:
 			ss = []string{strconv.FormatBool(v)}
 		case int:
@@ -106,7 +117,7 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 		case float64:
 			ss = []string{strconv.FormatFloat(v, 'g', -1, 64)}
 		case []byte:
-			ss = strings.Split(hex.Dump(v), "\n")
+			ss = strings.Split(trimRight(hex.Dump(v)), "\n")
 		case complex64:
 			ss = []string{strconv.FormatComplex(complex128(v), 'g', -1, 128)}
 		case complex128:
@@ -116,28 +127,27 @@ func (li LogItem) Flush(w io.Writer) (err error) {
 		}
 		switch len(ss) {
 		case 1:
-			write([]byte{' '})
-			s := strings.TrimRight(ss[0], " \n\r\t\v")
+			s := trimRight(ss[0])
 			write([]byte(s))
 			fallthrough
 		case 0:
-			write([]byte{'\n'})
+			write(yml[1:2]) //'\n'
 		default:
-			write([]byte{' ', '|', '\n'})
+			write(yml[:2]) //'|', '\n'
 			for _, s := range ss {
-				s = strings.TrimRight(s, " \n\r\t\v")
-				write([]byte{' ', ' ', ' ', ' '}) //extra indent 2 spaces
+				s = trimRight(s)
+				write(yml[2:6]) //' ', ' ', ' ', ' '
 				write([]byte(s))
-				write([]byte{'\n'})
+				write(yml[1:2]) //'\n'
 			}
 		}
 	}
 	if len(call) > 0 {
-		write([]byte("  callstack:\n"))
+		write(stk) //"  callstack:\n"
 		for _, c := range call {
-			write([]byte{' ', ' ', '-', ' '})
+			write(yml[4:8]) //' ', ' ', '-', ' '
 			write([]byte(c))
-			write([]byte{'\n'})
+			write(yml[1:2]) //'\n'
 		}
 	}
 	return

@@ -7,36 +7,55 @@ import (
 )
 
 type (
-	Print func(string, ...any)
-	Debug func(string, ...any)
-	Check func(any, ...any)
-	Catch func(*error, ...any)
+	Emitter func(string, ...any)
+	Checker func(any, ...any)
+	Catcher func(*error, ...any)
 )
 
-func (l *logger) Printer(data map[string]any) Print {
+func (l *logger) Log(props ...any) Emitter {
+	attr := parse(props...)
 	return func(mesg string, args ...any) {
-		mesg, data := format(data, mesg, args...)
-		l.ch <- &LogItem{
+		mesg, data := format(attr, mesg, args...)
+		item := LogItem{
 			When: time.Now(),
 			Mesg: mesg,
-			Data: data,
+			Attr: data,
 		}
+		st := trace(false)
+		if len(st) > 0 {
+			item.Attr["~src~"] = st[0]
+		}
+		if l.Filter != nil {
+			l.Filter(&item)
+		}
+		l.Emit(item)
 	}
 }
 
-func (l *logger) Debugger(data map[string]any) Debug {
+func (l *logger) Dbg(props ...any) Emitter {
+	attr := parse(props...)
 	return func(mesg string, args ...any) {
-		mesg, data := format(data, mesg, args...)
-		l.ch <- &LogItem{
-			When:  time.Now(),
-			Mesg:  mesg,
-			Data:  data,
-			Level: 1,
+		if !l.Debug {
+			return
 		}
+		mesg, data := format(attr, mesg, args...)
+		item := LogItem{
+			When: time.Now(),
+			Mesg: mesg,
+			Attr: data,
+		}
+		st := trace(false)
+		if len(st) > 0 {
+			item.Attr["~src~"] = st[0]
+		}
+		if l.Filter != nil {
+			l.Filter(&item)
+		}
+		l.Emit(item)
 	}
 }
 
-func (l *logger) Checker() Check {
+func (l *logger) Check() Checker {
 	return func(e any, ntfy ...any) {
 		switch v := e.(type) {
 		case nil:
@@ -55,25 +74,39 @@ func (l *logger) Checker() Check {
 	}
 }
 
-func (l *logger) Catcher(data map[string]any) Catch {
-	return func(err *error, attr ...any) {
-		switch e := recover().(type) {
+func (l *logger) Catch(props ...any) Catcher {
+	attr := parse(props...)
+	return func(err *error, args ...any) {
+		var e error
+		switch v := recover().(type) {
 		case nil:
 			return
+		case string:
+			e = errors.New(v)
 		case error:
-			if err != nil {
-				*err = e
-			}
-			mesg, data := format(data, e.Error(), attr...)
-			li := LogItem{
-				When: time.Now(),
-				Mesg: mesg,
-				Data: data,
-			}
-			li.Trace()
-			l.ch <- &li
+			e = v
 		default:
-			panic(fmt.Errorf("expect nil or error, got %T", e))
+			e = fmt.Errorf("yal.Catcher: unexpected data type %T", v)
 		}
+		if err != nil {
+			*err = e
+		}
+		mesg, data := format(attr, e.Error(), args...)
+		li := LogItem{
+			When: time.Now(),
+			Mesg: mesg,
+			Attr: data,
+		}
+		st := trace(true)
+		if len(st) > 0 {
+			if li.Attr == nil {
+				li.Attr = make(map[string]any)
+			}
+			li.Attr["callstack"] = st
+		}
+		if l.Filter != nil {
+			l.Filter(&li)
+		}
+		l.Emit(li)
 	}
 }

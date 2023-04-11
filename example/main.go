@@ -1,7 +1,44 @@
 package main
 
-import "go.xrfang.cn/yal"
+import (
+	"net/http"
+	"os"
+	"time"
+
+	"go.xrfang.cn/yal"
+)
+
+var log, dbg yal.Emitter
+var assert yal.Checker
+var catch yal.Catcher
+
+func task(g yal.Emitter, r *http.Request) {
+	g("", "method", r.Method, "url", r.URL.String())
+	panic("something wrong")
+}
 
 func main() {
-	l := yal.NewLogger()
+	L := yal.NewSimpleLogger(os.Stdout)
+	L.Debug = true
+	L.Trace = true
+	L.Filter = func(li *yal.LogItem) {
+		li.Mesg += "!!!"
+	}
+	defer L.Close()
+	log = L.Log()
+	dbg = L.Dbg()
+	assert = L.Check()
+	catch = L.Catch()
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		src := r.RemoteAddr
+		log := L.Log("client", src)
+		defer catch(nil, "client", src)
+		task(log, r)
+	})
+	svr := http.Server{
+		Addr:         ":1234",
+		ReadTimeout:  time.Minute,
+		WriteTimeout: time.Minute,
+	}
+	assert(svr.ListenAndServe())
 }

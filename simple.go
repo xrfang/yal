@@ -6,12 +6,13 @@ type SimpleHandler struct {
 	io.Writer
 }
 
-func (sh SimpleHandler) Name() string {
-	return "simple"
+func (sh SimpleHandler) Emit(li LogItem) {
+	li.Flush(sh)
 }
 
-func (sh SimpleHandler) Done() {}
+func (sh SimpleHandler) Close() error { return nil }
 
-func (sh SimpleHandler) Emit(li *LogItem) {
-	li.Flush(sh)
+func NewSimpleLogger(w io.Writer) *logger {
+	sh := SimpleHandler{w}
+	return NewLogger(Options{}, sh)
 }

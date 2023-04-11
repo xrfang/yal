@@ -7,43 +7,32 @@ import (
 )
 
 const (
-	queueLen = 64
-	badKey   = "!BADKEY"
-	badVal   = "!BADVAL"
+	badKey = "!BADKEY"
+	badVal = "!BADVAL"
 )
 
 type (
 	Handler interface {
-		Done()
-		Emit(*LogItem)
-		Name() string
-		SetLevel(int)
-		SetRotate(int, int)
+		Close() error
+		Emit(LogItem)
+	}
+	Options struct {
+		Trace  bool
+		Debug  bool
+		Filter func(*LogItem)
 	}
 	logger struct {
-		ch chan *LogItem
-		lh Handler
+		Options
+		Handler
 	}
 )
 
-func NewLogger(h Handler) *logger {
-	l := logger{ch: make(chan *LogItem, queueLen), lh: h}
-	go func() {
-		for {
-			li := <-l.ch
-			if li == nil {
-				l.lh.Done()
-				break
-			}
-			l.lh.Emit(li)
-		}
-	}()
-	return &l
+func NewLogger(o Options, h Handler) *logger {
+	return &logger{o, h}
 }
 
-func format(data map[string]any, mesg string, args ...any) (string, map[string]any) {
+func parse(args ...any) map[string]any {
 	attr := map[string]any{}
-parse:
 	for i := 0; i < len(args); i += 2 {
 		if i+1 >= len(args) {
 			break
@@ -53,9 +42,14 @@ parse:
 			attr[args[i].(string)] = args[i+1]
 		default:
 			attr[badKey] = args[i]
-			break parse
+			return attr
 		}
 	}
+	return attr
+}
+
+func format(data map[string]any, mesg string, args ...any) (string, map[string]any) {
+	attr := parse(args...)
 	ms := mtx.FindAllStringSubmatch(mesg, -1)
 	for _, m := range ms {
 		subst := attr[m[1]]
