@@ -23,8 +23,8 @@ func task2(g yal.Emitter, r *http.Request) {
 }
 
 func main() {
-	yal.Debug(true)
-	//yal.Trace(true)
+	//yal.Debug(true)
+	yal.Trace(true)
 	yal.Filter(func(li *yal.LogItem) {
 		li.Mesg += "!!!"
 	})
@@ -32,8 +32,7 @@ func main() {
 	yal.Setup(func() (yal.Handler, error) {
 		return yal.RotatedHandler(".", 1024, 0)
 	})
-	dbg = yal.NewDebugger("basename", "main.log")
-	dbg("program started, port={{port}}", "port", 1234)
+	dbg = yal.NewDebugger("basename", "task.log")
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		src := r.RemoteAddr
 		log := yal.NewLogger("client", src, "basename", "access.log")
@@ -47,7 +46,7 @@ func main() {
 		if rand.Int()%2 == 0 {
 			task1(log, r)
 		} else {
-			task2(log, r)
+			task2(dbg, r)
 		}
 	})
 	svr := http.Server{

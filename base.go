@@ -13,7 +13,6 @@ const (
 )
 
 type (
-	Switch  int8
 	Handler interface {
 		Emit(LogItem)
 	}
