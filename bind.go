@@ -3,6 +3,9 @@ package yal
 import (
 	"errors"
 	"fmt"
+	"regexp"
+	"runtime"
+	"strings"
 	"time"
 )
 
@@ -10,6 +13,73 @@ type (
 	Emitter func(string, ...any)
 	ErrProc = func(error) error
 )
+
+func parse(args ...any) map[string]any {
+	attr := map[string]any{}
+	for i := 0; i < len(args); i += 2 {
+		if i+1 >= len(args) {
+			break
+		}
+		switch args[i].(type) {
+		case string:
+			attr[args[i].(string)] = args[i+1]
+		default:
+			attr[badKey] = args[i]
+			return attr
+		}
+	}
+	return attr
+}
+
+func format(prop map[string]any, mesg string, args ...any) (string, map[string]any) {
+	attr := parse(args...)
+	ms := mtx.FindAllStringSubmatch(mesg, -1)
+	for _, m := range ms {
+		subst := attr[m[1]]
+		if subst != nil {
+			s := fmt.Sprintf("%v", subst)
+			mesg = strings.ReplaceAll(mesg, m[0], s)
+			delete(attr, m[1])
+		}
+	}
+	data := map[string]any{}
+	for k, v := range prop {
+		data[k] = v
+	}
+	for k, v := range attr {
+		data[k] = v
+	}
+	return mesg, data
+}
+
+func trace(full bool) []string {
+	var st []string
+	n := 1
+	for {
+		n++
+		pc, file, line, ok := runtime.Caller(n)
+		if !ok {
+			break
+		}
+		f := runtime.FuncForPC(pc)
+		name := f.Name()
+		if strings.HasPrefix(name, "runtime.") {
+			continue
+		}
+		fn := strings.Split(file, "/")
+		if len(fn) > 1 {
+			file = strings.Join(fn[len(fn)-2:], "/")
+		}
+		if file == "yal/bind.go" {
+			continue
+		}
+		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
+		if !full {
+			break
+		}
+	}
+	return st
+}
 
 func NewLogger(props ...any) Emitter {
 	attr := parse(props...)
@@ -135,4 +205,10 @@ func Catch(h any, args ...any) {
 	if lh != nil {
 		lh.Emit(li)
 	}
+}
+
+var mtx *regexp.Regexp
+
+func init() {
+	mtx = regexp.MustCompile(`{{(\w+)}}`)
 }

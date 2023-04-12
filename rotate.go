@@ -2,6 +2,7 @@ package yal
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,6 +22,23 @@ type (
 		sync.Mutex
 	}
 )
+
+func assert(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func onErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	fmt.Fprintf(os.Stderr, "ERROR: yal: %v\n", err)
+	for _, s := range trace(true) {
+		fmt.Fprintln(os.Stderr, "  ", s)
+	}
+	return true
+}
 
 func (rh *rotatedHandler) Emit(li LogItem) {
 	rh.Lock()
