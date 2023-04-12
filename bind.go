@@ -12,7 +12,7 @@ type (
 	Catcher func(*error, ...any)
 )
 
-func (l *logger) Log(props ...any) Emitter {
+func NewLogger(props ...any) Emitter {
 	attr := parse(props...)
 	return func(mesg string, args ...any) {
 		mesg, data := format(attr, mesg, args...)
@@ -21,21 +21,28 @@ func (l *logger) Log(props ...any) Emitter {
 			Mesg: mesg,
 			Attr: data,
 		}
-		st := trace(false)
-		if len(st) > 0 {
-			item.Attr["~src~"] = st[0]
+		if opt.Trace {
+			st := trace(false)
+			if len(st) > 0 {
+				item.Attr["~src~"] = st[0]
+			}
 		}
-		if l.Filter != nil {
-			l.Filter(&item)
+		if opt.Filter != nil {
+			opt.Filter(&item)
 		}
-		l.Emit(item)
+		if peek != nil {
+			item.flush(peek)
+		}
+		if lh != nil {
+			lh.Emit(item)
+		}
 	}
 }
 
-func (l *logger) Dbg(props ...any) Emitter {
+func NewDebugger(props ...any) Emitter {
 	attr := parse(props...)
 	return func(mesg string, args ...any) {
-		if !l.Debug {
+		if !opt.Debug {
 			return
 		}
 		mesg, data := format(attr, mesg, args...)
@@ -44,18 +51,25 @@ func (l *logger) Dbg(props ...any) Emitter {
 			Mesg: mesg,
 			Attr: data,
 		}
-		st := trace(false)
-		if len(st) > 0 {
-			item.Attr["~src~"] = st[0]
+		if opt.Trace {
+			st := trace(false)
+			if len(st) > 0 {
+				item.Attr["~src~"] = st[0]
+			}
 		}
-		if l.Filter != nil {
-			l.Filter(&item)
+		if opt.Filter != nil {
+			opt.Filter(&item)
 		}
-		l.Emit(item)
+		if peek != nil {
+			item.flush(peek)
+		}
+		if lh != nil {
+			lh.Emit(item)
+		}
 	}
 }
 
-func (l *logger) Check() Checker {
+func ErrChecker() Checker {
 	return func(e any, ntfy ...any) {
 		switch v := e.(type) {
 		case nil:
@@ -70,11 +84,15 @@ func (l *logger) Check() Checker {
 				}
 				panic(errors.New(mesg))
 			}
+		case error:
+			panic(v)
+		default:
+			panic(fmt.Errorf("yal.Checker: expect <error> or <bool>, got <%T>", e))
 		}
 	}
 }
 
-func (l *logger) Catch(props ...any) Catcher {
+func NewCatcher(props ...any) Catcher {
 	attr := parse(props...)
 	return func(err *error, args ...any) {
 		var e error
@@ -104,9 +122,14 @@ func (l *logger) Catch(props ...any) Catcher {
 			}
 			li.Attr["callstack"] = st
 		}
-		if l.Filter != nil {
-			l.Filter(&li)
+		if opt.Filter != nil {
+			opt.Filter(&li)
 		}
-		l.Emit(li)
+		if peek != nil {
+			li.flush(peek)
+		}
+		if lh != nil {
+			lh.Emit(li)
+		}
 	}
 }

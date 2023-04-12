@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"go.xrfang.cn/yal"
@@ -12,27 +13,27 @@ var assert yal.Checker
 var catch yal.Catcher
 
 func task(g yal.Emitter, r *http.Request) {
-	g("", "method", r.Method, "url", r.URL.String())
-	panic("something wrong")
+	g("handling task...", "method", r.Method, "url", r.URL.String())
+	assert(1 == 2, "can you to math?")
 }
 
 func main() {
-	L, err := yal.NewRotatedLogger(".", 1024, 0)
-	if err != nil {
-		panic(err)
-	}
-	L.Debug = true
-	L.Trace = true
-	L.Filter = func(li *yal.LogItem) {
+	yal.Debug(true)
+	//yal.Trace(true)
+	yal.Filter(func(li *yal.LogItem) {
 		li.Mesg += "!!!"
-	}
-	log = L.Log()
-	dbg = L.Dbg()
-	assert = L.Check()
-	catch = L.Catch()
+	})
+	yal.Peek(os.Stderr)
+	yal.Setup(func() (yal.Handler, error) {
+		return yal.RotatedHandler(".", 1024, 0)
+	})
+	log = yal.NewLogger()
+	dbg = yal.NewDebugger()
+	assert = yal.ErrChecker()
+	catch = yal.NewCatcher()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		src := r.RemoteAddr
-		log := L.Log("client", src, "basename", "access.log")
+		log := yal.NewLogger("client", src, "basename", "access.log")
 		defer catch(nil, "client", src, "basename", "errors.log")
 		task(log, r)
 	})

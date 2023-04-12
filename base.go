@@ -2,6 +2,7 @@ package yal
 
 import (
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 )
@@ -12,6 +13,7 @@ const (
 )
 
 type (
+	Switch  int8
 	Handler interface {
 		Emit(LogItem)
 	}
@@ -20,14 +22,35 @@ type (
 		Debug  bool
 		Filter func(*LogItem)
 	}
-	logger struct {
-		Options
-		Handler
-	}
 )
 
-func NewLogger(o Options, h Handler) *logger {
-	return &logger{o, h}
+func Debug(on bool) {
+	opt.Debug = on
+}
+
+func Trace(on bool) {
+	opt.Trace = on
+}
+
+func Peek(w io.Writer) {
+	if w == nil {
+		peek = io.Discard
+	} else {
+		peek = w
+	}
+}
+
+func Filter(f func(*LogItem)) {
+	opt.Filter = f
+}
+
+func Setup(f func() (Handler, error)) error {
+	h, err := f()
+	if err != nil {
+		return err
+	}
+	lh = h
+	return nil
 }
 
 func parse(args ...any) map[string]any {
@@ -67,8 +90,14 @@ func format(data map[string]any, mesg string, args ...any) (string, map[string]a
 	return mesg, data
 }
 
-var mtx *regexp.Regexp
+var (
+	opt  Options
+	mtx  *regexp.Regexp
+	peek io.Writer
+	lh   Handler
+)
 
 func init() {
 	mtx = regexp.MustCompile(`{{(\w+)}}`)
+	peek = io.Discard
 }

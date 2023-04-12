@@ -121,7 +121,7 @@ func (rh *rotatedHandler) rotate(f *os.File) bool {
 	return true
 }
 
-func NewRotatedLogger(dir string, split, keep int) (*logger, error) {
+func RotatedHandler(dir string, split, keep int) (Handler, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -143,5 +143,5 @@ func NewRotatedLogger(dir string, split, keep int) (*logger, error) {
 		fhm:   make(map[string]*os.File),
 	}
 	go rh.ingest()
-	return NewLogger(Options{}, &rh), nil
+	return &rh, nil
 }
