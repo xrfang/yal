@@ -64,6 +64,8 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 		write(yml[8:]) //':', ' '
 		var ss []string
 		switch v := li.Attr[k].(type) {
+		case error:
+			ss = strings.Split(trimRight(v.Error()), "\n")
 		case string:
 			ss = strings.Split(trimRight(v), "\n")
 		case bool:
