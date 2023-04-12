@@ -104,7 +104,7 @@ func NewCatcher(props ...any) Catcher {
 		case error:
 			e = v
 		default:
-			e = fmt.Errorf("yal.Catcher: unexpected data type %T", v)
+			e = fmt.Errorf("%v", v)
 		}
 		if err != nil {
 			*err = e

@@ -99,5 +99,4 @@ var (
 
 func init() {
 	mtx = regexp.MustCompile(`{{(\w+)}}`)
-	peek = io.Discard
 }
