@@ -42,6 +42,9 @@ func trace(full bool) []string {
 		if len(fn) > 1 {
 			file = strings.Join(fn[len(fn)-2:], "/")
 		}
+		if file == "yal/bind.go" {
+			continue
+		}
 		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
 		if !full {
 			break
