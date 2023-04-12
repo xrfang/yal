@@ -29,12 +29,6 @@ func trimRight(str string) string {
 	return ""
 }
 
-func (li *LogItem) popAttr(name string) any {
-	attr := li.Attr[name]
-	delete(li.Attr, name)
-	return attr
-}
-
 func (li *LogItem) flush(w io.Writer) (err error) {
 	write := func(buf []byte) {
 		_, err = w.Write(buf)

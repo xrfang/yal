@@ -11,59 +11,41 @@ import (
 	"time"
 )
 
-const queueLen = 32
-
 type (
 	rotatedHandler struct {
 		dir   string
 		split int64
 		keep  int
-		ch    chan LogItem
+		hkch  chan string //housekeeping
 		fhm   map[string]*os.File
 		sync.Mutex
 	}
 )
 
 func (rh *rotatedHandler) Emit(li LogItem) {
-	rh.ch <- li
-}
-
-func (rh *rotatedHandler) getHandle(li *LogItem) (string, *os.File, error) {
 	rh.Lock()
 	defer rh.Unlock()
 	base := "log"
-	if v := li.popAttr("basename"); v != nil {
-		base = v.(string)
+	switch bn := li.Attr["basename"].(type) {
+	case string:
+		if bn = strings.TrimSpace(bn); bn != "" {
+			base = bn
+		}
 	}
-	if f := rh.fhm[base]; f != nil {
-		return base, f, nil
-	}
-	fp := filepath.Join(rh.dir, base)
-	f, err := os.OpenFile(fp, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		return "", nil, err
-	}
-	rh.fhm[base] = f
-	return base, f, nil
-}
-
-func (rh *rotatedHandler) delHandle(name string) {
-	rh.Lock()
-	defer rh.Unlock()
-	delete(rh.fhm, name)
-}
-
-func (rh *rotatedHandler) ingest() {
-	for {
-		li := <-rh.ch
-		base, f, err := rh.getHandle(&li)
+	f := rh.fhm[base]
+	if f == nil {
+		fp := filepath.Join(rh.dir, base)
+		var err error
+		f, err = os.OpenFile(fp, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 		if onErr(err) {
-			continue
+			return
 		}
-		li.flush(f)
-		if rh.rotate(f) {
-			rh.delHandle(base)
-		}
+		rh.fhm[base] = f
+	}
+	delete(li.Attr, "basename")
+	li.flush(f)
+	if rh.rotate(f) {
+		delete(rh.fhm, base)
 	}
 }
 
@@ -81,43 +63,7 @@ func (rh *rotatedHandler) rotate(f *os.File) bool {
 	assert(f.Close())
 	fn := f.Name()
 	assert(os.Rename(fn, fn+"."+time.Now().Format("20060102_150405")))
-	go func(n string) {
-		rh.Lock()
-		defer rh.Unlock()
-		oldLogs, _ := filepath.Glob(n + ".*")
-		var backups []string
-		for _, ol := range oldLogs {
-			if strings.HasSuffix(ol, ".gz") {
-				backups = append(backups, ol)
-				continue
-			}
-			func(fn string) {
-				defer func() {
-					if e := recover(); err != nil {
-						onErr(e.(error))
-						return
-					}
-					os.Remove(fn)
-					backups = append(backups, fn+".gz")
-				}()
-				f, err := os.Open(fn)
-				assert(err)
-				defer f.Close()
-				g, err := os.Create(fn + ".gz")
-				assert(err)
-				defer func() { assert(g.Close()) }()
-				zw, _ := gzip.NewWriterLevel(g, gzip.BestSpeed)
-				defer func() { assert(zw.Close()) }()
-				_, err = io.Copy(zw, f)
-				assert(err)
-			}(ol)
-		}
-		sort.Slice(backups, func(i, j int) bool { return backups[i] < backups[j] })
-		for len(backups) >= rh.keep {
-			os.Remove(backups[0])
-			backups = backups[1:]
-		}
-	}(fn)
+	go func() { rh.hkch <- fn }()
 	return true
 }
 
@@ -139,9 +85,46 @@ func RotatedHandler(dir string, split, keep int) (Handler, error) {
 		dir:   dir,
 		split: int64(split),
 		keep:  keep,
-		ch:    make(chan LogItem, queueLen),
+		hkch:  make(chan string),
 		fhm:   make(map[string]*os.File),
 	}
-	go rh.ingest()
+	go func() {
+		for {
+			n := <-rh.hkch
+			oldLogs, _ := filepath.Glob(n + ".*")
+			var backups []string
+			for _, ol := range oldLogs {
+				if strings.HasSuffix(ol, ".gz") {
+					backups = append(backups, ol)
+					continue
+				}
+				func(fn string) {
+					defer func() {
+						if e := recover(); err != nil {
+							onErr(e.(error))
+							return
+						}
+						os.Remove(fn)
+						backups = append(backups, fn+".gz")
+					}()
+					f, err := os.Open(fn)
+					assert(err)
+					defer f.Close()
+					g, err := os.Create(fn + ".gz")
+					assert(err)
+					defer func() { assert(g.Close()) }()
+					zw, _ := gzip.NewWriterLevel(g, gzip.BestSpeed)
+					defer func() { assert(zw.Close()) }()
+					_, err = io.Copy(zw, f)
+					assert(err)
+				}(ol)
+			}
+			sort.Slice(backups, func(i, j int) bool { return backups[i] < backups[j] })
+			for len(backups) >= rh.keep {
+				os.Remove(backups[0])
+				backups = backups[1:]
+			}
+		}
+	}()
 	return &rh, nil
 }

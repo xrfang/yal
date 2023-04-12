@@ -70,7 +70,7 @@ func parse(args ...any) map[string]any {
 	return attr
 }
 
-func format(data map[string]any, mesg string, args ...any) (string, map[string]any) {
+func format(prop map[string]any, mesg string, args ...any) (string, map[string]any) {
 	attr := parse(args...)
 	ms := mtx.FindAllStringSubmatch(mesg, -1)
 	for _, m := range ms {
@@ -81,8 +81,9 @@ func format(data map[string]any, mesg string, args ...any) (string, map[string]a
 			delete(attr, m[1])
 		}
 	}
-	if data == nil {
-		return mesg, attr
+	data := map[string]any{}
+	for k, v := range prop {
+		data[k] = v
 	}
 	for k, v := range attr {
 		data[k] = v
