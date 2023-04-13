@@ -2,18 +2,26 @@ package yal
 
 import (
 	"encoding/hex"
+	"fmt"
 	"io"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 )
 
-type LogItem struct {
-	When time.Time
-	Mesg string
-	Attr map[string]any
-}
+type (
+	Hex8    uint8
+	Hex16   uint16
+	Hex32   uint32
+	Hex64   uint64
+	LogItem struct {
+		When time.Time
+		Mesg string
+		Attr map[string]any
+	}
+)
 
 var (
 	yml = []byte{'|', '\n', ' ', ' ', ' ', ' ', '-', ' ', ':', ' '}
@@ -89,7 +97,15 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 		case uint64:
 			ss = []string{strconv.FormatUint(v, 10)}
 		case uintptr:
-			ss = []string{strconv.FormatUint(uint64(v), 16)}
+			ss = []string{fmt.Sprintf(ptrFmt, v)}
+		case Hex8:
+			ss = []string{fmt.Sprintf("%02x", v)}
+		case Hex16:
+			ss = []string{fmt.Sprintf("%04x", v)}
+		case Hex32:
+			ss = []string{fmt.Sprintf("%08x", v)}
+		case Hex64:
+			ss = []string{fmt.Sprintf("%016x", v)}
 		case float32:
 			ss = []string{strconv.FormatFloat(float64(v), 'g', -1, 64)}
 		case float64:
@@ -129,4 +145,10 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 		}
 	}
 	return
+}
+
+var ptrFmt string
+
+func init() {
+	ptrFmt = fmt.Sprintf("%%0%dx", unsafe.Sizeof(uintptr(0))*2)
 }
