@@ -90,21 +90,7 @@ func NewLogger(props ...any) Emitter {
 			Mesg: mesg,
 			Attr: data,
 		}
-		if opt.Trace {
-			st := trace(false)
-			if len(st) > 0 {
-				item.Attr["~src~"] = st[0]
-			}
-		}
-		if opt.Filter != nil {
-			opt.Filter(&item)
-		}
-		if peek != nil {
-			item.flush(peek)
-		}
-		if lh != nil {
-			lh.Emit(item)
-		}
+		Log(item)
 	}
 }
 
@@ -120,21 +106,25 @@ func NewDebugger(props ...any) Emitter {
 			Mesg: mesg,
 			Attr: data,
 		}
-		if opt.Trace {
-			st := trace(false)
-			if len(st) > 0 {
-				item.Attr["~src~"] = st[0]
-			}
+		Log(item)
+	}
+}
+
+func Log(item LogItem) {
+	if opt.Trace {
+		st := trace(false)
+		if len(st) > 0 {
+			item.Attr["~src~"] = st[0]
 		}
-		if opt.Filter != nil {
-			opt.Filter(&item)
-		}
-		if peek != nil {
-			item.flush(peek)
-		}
-		if lh != nil {
-			lh.Emit(item)
-		}
+	}
+	if opt.Filter != nil {
+		opt.Filter(&item)
+	}
+	if peek != nil {
+		item.flush(peek)
+	}
+	if lh != nil {
+		lh.Emit(item)
 	}
 }
 

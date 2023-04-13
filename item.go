@@ -162,6 +162,10 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 	return
 }
 
+func (li *LogItem) Trace() {
+	li.Attr["callstack"] = trace(true)
+}
+
 var ptrFmt string
 
 func init() {
