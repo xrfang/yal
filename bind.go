@@ -163,7 +163,6 @@ func Catch(h any, args ...any) {
 	var e error
 	switch v := recover().(type) {
 	case nil:
-		return
 	case string:
 		e = errors.New(v)
 	case error:
@@ -177,11 +176,11 @@ func Catch(h any, args ...any) {
 		*proc = e
 	case ErrProc:
 		e = proc(e)
-		if e == nil {
-			return
-		}
 	default:
-		panic(fmt.Errorf("yal.Catch: invalid type <%T>", h))
+		panic(fmt.Errorf("yal.Catch: invalid handler <%T>", h))
+	}
+	if e == nil {
+		return
 	}
 	mesg, data := format(nil, e.Error(), args...)
 	li := LogItem{
