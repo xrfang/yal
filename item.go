@@ -48,8 +48,23 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 	write(yml[6:8]) //'-', ' '
 	write([]byte(li.When.Format("20060102_150405.000")))
 	write(yml[8:]) //':', ' '
-	write([]byte(li.Mesg))
-	write(yml[1:2]) //'\n'
+	msg := strings.Split(trimRight(li.Mesg), "\n")
+	switch len(msg) {
+	case 1:
+		s := trimRight(msg[0])
+		write([]byte(s))
+		fallthrough
+	case 0:
+		write(yml[1:2]) //'\n'
+	default:
+		write(yml[:2]) //'|', '\n'
+		for _, s := range msg {
+			s = trimRight(s)
+			write(yml[2:4]) //' ', ' ',
+			write([]byte(s))
+			write(yml[1:2]) //'\n'
+		}
+	}
 	var keys []string
 	var call []string
 	for k, v := range li.Attr {
