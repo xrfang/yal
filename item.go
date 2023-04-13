@@ -60,6 +60,8 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 		switch v := li.Attr[k].(type) {
 		case error:
 			ss = strings.Split(trimRight(v.Error()), "\n")
+		case time.Duration:
+			ss = []string{v.String()}
 		case time.Time:
 			ss = []string{v.Format(time.RFC3339Nano)}
 		case string:
