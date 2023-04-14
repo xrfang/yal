@@ -13,7 +13,9 @@ import (
 var dbg yal.Emitter
 
 func task1(g yal.Emitter, r *http.Request) {
-	g("handling task1...", "method", r.Method, "url", r.URL.String())
+	g("handling task1, id={{id}}...", "method", r.Method, "url",
+		r.URL.String(), "id", yal.Hex32(3735928559))
+	g("test multi-line attr", "attr", "hello\nworld")
 	yal.Assert(1 == 2, "can you do math?")
 }
 
@@ -23,7 +25,7 @@ func task2(g yal.Emitter, r *http.Request) {
 }
 
 func main() {
-	//yal.Debug(true)
+	yal.Debug(true)
 	yal.Trace(true)
 	yal.Filter(func(li *yal.LogItem) {
 		li.Mesg += "!!!"
@@ -32,7 +34,7 @@ func main() {
 	yal.Setup(func() (yal.Handler, error) {
 		return yal.RotatedHandler(".", 1024, 0)
 	})
-	dbg = yal.NewDebugger("basename", "task.log")
+	dbg = yal.NewDebugger("basename", "task.log", "key", []byte{0xDE, 0xAD, 0xBE, 0xEF})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		src := r.RemoteAddr
 		log := yal.NewLogger("client", src, "basename", "access.log")

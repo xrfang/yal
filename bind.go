@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,6 +15,70 @@ type (
 	ErrProc = func(error) error
 )
 
+func stringify(a any) any {
+	switch v := a.(type) {
+	case error:
+		ss := strings.Split(trimRight(v.Error()), "\n")
+		if len(ss) == 1 {
+			return ss[0]
+		}
+		return ss
+	case time.Duration:
+		return v.String()
+	case time.Time:
+		return v.Format(time.RFC3339Nano)
+	case string:
+		ss := strings.Split(trimRight(v), "\n")
+		if len(ss) == 1 {
+			return ss[0]
+		}
+		return ss
+	case bool:
+		return strconv.FormatBool(v)
+	case int:
+		return strconv.FormatInt(int64(v), 10)
+	case int8:
+		return strconv.FormatInt(int64(v), 10)
+	case int16:
+		return strconv.FormatInt(int64(v), 10)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case uintptr:
+		return fmt.Sprintf(ptrFmt, v)
+	case Hex8:
+		return fmt.Sprintf("%02x", v)
+	case Hex16:
+		return fmt.Sprintf("%04x", v)
+	case Hex32:
+		return fmt.Sprintf("%08x", v)
+	case Hex64:
+		return fmt.Sprintf("%016x", v)
+	case float32:
+		return strconv.FormatFloat(float64(v), 'g', -1, 64)
+	case float64:
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	case []byte:
+		return v
+	case complex64:
+		return strconv.FormatComplex(complex128(v), 'g', -1, 128)
+	case complex128:
+		return strconv.FormatComplex(v, 'g', -1, 128)
+	}
+	return badVal
+}
+
 func parse(args ...any) map[string]any {
 	attr := map[string]any{}
 	for i := 0; i < len(args); i += 2 {
@@ -22,7 +87,7 @@ func parse(args ...any) map[string]any {
 		}
 		switch args[i].(type) {
 		case string:
-			attr[args[i].(string)] = args[i+1]
+			attr[args[i].(string)] = stringify(args[i+1])
 		default:
 			attr[badKey] = args[i]
 			return attr
@@ -36,11 +101,17 @@ func format(prop map[string]any, mesg string, args ...any) (string, map[string]a
 	ms := mtx.FindAllStringSubmatch(mesg, -1)
 	for _, m := range ms {
 		subst := attr[m[1]]
-		if subst != nil {
-			s := fmt.Sprintf("%v", subst)
+		switch v := subst.(type) {
+		case string:
+			mesg = strings.ReplaceAll(mesg, m[0], v)
+		case []string:
+			s := strings.Join(v, "\n")
 			mesg = strings.ReplaceAll(mesg, m[0], s)
-			delete(attr, m[1])
+		case []byte:
+			s := fmt.Sprintf("%x", v)
+			mesg = strings.ReplaceAll(mesg, m[0], s)
 		}
+		delete(attr, m[1])
 	}
 	data := map[string]any{}
 	for k, v := range prop {

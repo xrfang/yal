@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -51,15 +50,13 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 	msg := strings.Split(trimRight(li.Mesg), "\n")
 	switch len(msg) {
 	case 1:
-		s := trimRight(msg[0])
-		write([]byte(s))
+		write([]byte(msg[0]))
 		fallthrough
 	case 0:
 		write(yml[1:2]) //'\n'
 	default:
 		write(yml[:2]) //'|', '\n'
 		for _, s := range msg {
-			s = trimRight(s)
 			write(yml[2:4]) //' ', ' ',
 			write([]byte(s))
 			write(yml[1:2]) //'\n'
@@ -79,72 +76,20 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 		write(yml[2:4]) //' ', ' '
 		write([]byte(k))
 		write(yml[8:]) //':', ' '
-		var ss []string
 		switch v := li.Attr[k].(type) {
-		case error:
-			ss = strings.Split(trimRight(v.Error()), "\n")
-		case time.Duration:
-			ss = []string{v.String()}
-		case time.Time:
-			ss = []string{v.Format(time.RFC3339Nano)}
 		case string:
-			ss = strings.Split(trimRight(v), "\n")
-		case bool:
-			ss = []string{strconv.FormatBool(v)}
-		case int:
-			ss = []string{strconv.FormatInt(int64(v), 10)}
-		case int8:
-			ss = []string{strconv.FormatInt(int64(v), 10)}
-		case int16:
-			ss = []string{strconv.FormatInt(int64(v), 10)}
-		case int32:
-			ss = []string{strconv.FormatInt(int64(v), 10)}
-		case int64:
-			ss = []string{strconv.FormatInt(v, 10)}
-		case uint:
-			ss = []string{strconv.FormatUint(uint64(v), 10)}
-		case uint8:
-			ss = []string{strconv.FormatUint(uint64(v), 10)}
-		case uint16:
-			ss = []string{strconv.FormatUint(uint64(v), 10)}
-		case uint32:
-			ss = []string{strconv.FormatUint(uint64(v), 10)}
-		case uint64:
-			ss = []string{strconv.FormatUint(v, 10)}
-		case uintptr:
-			ss = []string{fmt.Sprintf(ptrFmt, v)}
-		case Hex8:
-			ss = []string{fmt.Sprintf("%02x", v)}
-		case Hex16:
-			ss = []string{fmt.Sprintf("%04x", v)}
-		case Hex32:
-			ss = []string{fmt.Sprintf("%08x", v)}
-		case Hex64:
-			ss = []string{fmt.Sprintf("%016x", v)}
-		case float32:
-			ss = []string{strconv.FormatFloat(float64(v), 'g', -1, 64)}
-		case float64:
-			ss = []string{strconv.FormatFloat(v, 'g', -1, 64)}
-		case []byte:
-			ss = strings.Split(trimRight(hex.Dump(v)), "\n")
-		case complex64:
-			ss = []string{strconv.FormatComplex(complex128(v), 'g', -1, 128)}
-		case complex128:
-			ss = []string{strconv.FormatComplex(v, 'g', -1, 128)}
-		default:
-			ss = []string{badVal}
-		}
-		switch len(ss) {
-		case 1:
-			s := trimRight(ss[0])
-			write([]byte(s))
-			fallthrough
-		case 0:
+			write([]byte(v))
 			write(yml[1:2]) //'\n'
-		default:
+		case []string:
 			write(yml[:2]) //'|', '\n'
-			for _, s := range ss {
-				s = trimRight(s)
+			for _, s := range v {
+				write(yml[2:6]) //' ', ' ', ' ', ' '
+				write([]byte(s))
+				write(yml[1:2]) //'\n'
+			}
+		case []byte:
+			write(yml[:2]) //'|', '\n'
+			for _, s := range strings.Split(trimRight(hex.Dump(v)), "\n") {
 				write(yml[2:6]) //' ', ' ', ' ', ' '
 				write([]byte(s))
 				write(yml[1:2]) //'\n'
