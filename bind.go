@@ -234,7 +234,9 @@ func Catch(h any, args ...any) {
 	switch proc := h.(type) {
 	case nil:
 	case *error:
-		*proc = e
+		if e != nil {
+			*proc = e
+		}
 	case ErrProc:
 		e = proc(e)
 	default:
