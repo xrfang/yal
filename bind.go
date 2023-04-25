@@ -185,6 +185,10 @@ func Log(item LogItem) {
 	if opt.Trace {
 		st := trace(false)
 		if len(st) > 0 {
+			fmt.Printf("tracing:\n")
+			for _, s := range st {
+				fmt.Println(">", s)
+			}
 			item.Attr["~src~"] = st[0]
 		}
 	}
