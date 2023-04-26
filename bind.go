@@ -134,16 +134,16 @@ func trace(full bool) []string {
 		}
 		f := runtime.FuncForPC(pc)
 		name := f.Name()
-		if strings.HasPrefix(name, "runtime.") {
-			continue
-		}
-		fn := strings.Split(file, "/")
-		if len(fn) > 1 {
-			file = strings.Join(fn[len(fn)-2:], "/")
-		}
-		if file == "yal/bind.go" {
-			continue
-		}
+		// if strings.HasPrefix(name, "runtime.") {
+		// continue
+		// }
+		// fn := strings.Split(file, "/")
+		// if len(fn) > 1 {
+		// file = strings.Join(fn[len(fn)-2:], "/")
+		// }
+		// if file == "yal/bind.go" {
+		// continue
+		// }
 		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
 		if !full {
 			break
