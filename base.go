@@ -2,6 +2,7 @@ package yal
 
 import (
 	"io"
+	"reflect"
 )
 
 const (
@@ -53,4 +54,9 @@ var (
 	opt  Options
 	peek io.Writer
 	lh   Handler
+	skip []string
 )
+
+func init() {
+	skip = []string{"runtime.", reflect.TypeOf(opt).PkgPath() + "."}
+}

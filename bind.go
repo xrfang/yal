@@ -126,6 +126,7 @@ func format(prop map[string]any, mesg string, args ...any) (string, map[string]a
 func trace(full bool) []string {
 	var st []string
 	n := 1
+step:
 	for {
 		n++
 		pc, file, line, ok := runtime.Caller(n)
@@ -134,16 +135,11 @@ func trace(full bool) []string {
 		}
 		f := runtime.FuncForPC(pc)
 		name := f.Name()
-		// if strings.HasPrefix(name, "runtime.") {
-		// continue
-		// }
-		// fn := strings.Split(file, "/")
-		// if len(fn) > 1 {
-		// file = strings.Join(fn[len(fn)-2:], "/")
-		// }
-		// if file == "yal/bind.go" {
-		// continue
-		// }
+		for _, pfx := range skip {
+			if strings.HasPrefix(name, pfx) {
+				continue step
+			}
+		}
 		st = append(st, fmt.Sprintf("(%s:%d) %s", file, line, name))
 		if !full {
 			break
