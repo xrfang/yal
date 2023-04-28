@@ -53,6 +53,9 @@ func (rh *rotatedHandler) Emit(li LogItem) {
 	f := rh.fhm[base]
 	if f == nil {
 		fp := filepath.Join(rh.dir, base)
+		if onErr(os.MkdirAll(filepath.Dir(fp), 0777)) {
+			return
+		}
 		var err error
 		f, err = os.OpenFile(fp, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 		if onErr(err) {

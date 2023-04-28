@@ -34,17 +34,17 @@ func main() {
 	yal.Setup(func() (yal.Handler, error) {
 		return yal.RotatedHandler(".", 1024, 0)
 	})
-	dbg = yal.NewDebugger("basename", "task.log", "key", []byte{0xDE, 0xAD, 0xBE, 0xEF})
+	dbg = yal.NewDebugger("basename", "task/log", "key", []byte{0xDE, 0xAD, 0xBE, 0xEF})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		src := r.RemoteAddr
-		log := yal.NewLogger("client", src, "basename", "access.log")
+		log := yal.NewLogger("client", src, "basename", "access/log")
 		defer yal.Catch(func(e error) error {
 			if e == io.EOF {
 				log("suppressed EOF")
 				return nil
 			}
 			return e
-		}, "client", src, "basename", "errors.log")
+		}, "client", src, "basename", "errors/log")
 		if rand.Int()%2 == 0 {
 			task1(log, r)
 		} else {
