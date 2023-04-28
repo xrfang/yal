@@ -12,7 +12,7 @@ type (
 		Emit(LogItem)
 	}
 	Options struct {
-		Trace  bool
+		Trace  byte
 		Debug  bool
 		Filter func(*LogItem)
 	}
@@ -22,8 +22,12 @@ func Debug(on bool) {
 	opt.Debug = on
 }
 
-func Trace(on bool) {
-	opt.Trace = on
+func Trace(mode byte) {
+	if mode < 2 {
+		opt.Trace = mode
+	} else {
+		opt.Trace = 2
+	}
 }
 
 func Peek(w io.Writer) {

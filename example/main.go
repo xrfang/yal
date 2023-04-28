@@ -26,7 +26,7 @@ func task2(g yal.Emitter, r *http.Request) {
 
 func main() {
 	yal.Debug(true)
-	yal.Trace(true)
+	yal.Trace(1)
 	yal.Filter(func(li *yal.LogItem) {
 		li.Mesg += "!!!"
 	})

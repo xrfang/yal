@@ -178,11 +178,11 @@ func NewDebugger(props ...any) Emitter {
 }
 
 func Log(item LogItem) {
-	if opt.Trace {
-		st := trace(false)
-		if len(st) > 0 {
-			item.Attr["~src~"] = st[0]
-		}
+	switch opt.Trace {
+	case 1:
+		item.Attr["callstack"] = trace(false)
+	case 2:
+		item.Attr["callstack"] = trace(true)
 	}
 	if opt.Filter != nil {
 		opt.Filter(&item)
