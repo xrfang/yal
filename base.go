@@ -30,6 +30,13 @@ func Trace(mode byte) {
 	}
 }
 
+func RemoveFromCallStack(patterns ...string) {
+	skip = []string{"runtime.", pkgp}
+	for _, p := range patterns {
+		skip = append(skip, p)
+	}
+}
+
 func Peek(w io.Writer) {
 	peek = w
 }
@@ -51,9 +58,11 @@ var (
 	opt  Options
 	peek io.Writer
 	lh   Handler
+	pkgp string
 	skip []string
 )
 
 func init() {
-	skip = []string{"runtime.", reflect.TypeOf(opt).PkgPath() + "."}
+	pkgp = reflect.TypeOf(opt).PkgPath() + "."
+	skip = []string{"runtime.", pkgp}
 }
