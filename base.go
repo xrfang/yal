@@ -31,11 +31,7 @@ func Trace(mode byte) {
 }
 
 func Peek(w io.Writer) {
-	if w == nil {
-		peek = io.Discard
-	} else {
-		peek = w
-	}
+	peek = w
 }
 
 func Filter(f func(*LogItem)) {
