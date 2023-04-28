@@ -5,10 +5,7 @@ import (
 	"reflect"
 )
 
-const (
-	badKey = "!BADKEY"
-	badVal = "!BADVAL"
-)
+const badKey = "!BADKEY"
 
 type (
 	Handler interface {

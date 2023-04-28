@@ -76,7 +76,7 @@ func stringify(a any) any {
 	case complex128:
 		return strconv.FormatComplex(v, 'g', -1, 128)
 	}
-	return badVal
+	return fmt.Sprintf("%v", a)
 }
 
 func parse(args ...any) map[string]any {
