@@ -11,13 +11,21 @@ import (
 )
 
 type (
-	Hex8    uint8
-	Hex16   uint16
-	Hex32   uint32
-	Hex64   uint64
+	// Hex8 is a uint8 value appears as hexadecimal string in log message
+	Hex8 uint8
+	// Hex16 is a uint16 value appears as hexadecimal string in log message
+	Hex16 uint16
+	// Hex32 is a uint32 value appears as hexadecimal string in log message
+	Hex32 uint32
+	// Hex64 is a uint64 value appears as hexadecimal string in log message
+	Hex64 uint64
+	// LogItem is the data structure sent to an [Emitter].
 	LogItem struct {
+		// when the log message is generated
 		When time.Time
+		// the log message
 		Mesg string
+		// attribute (key-value pairs) of the log message
 		Attr map[string]any
 	}
 )

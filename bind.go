@@ -10,10 +10,9 @@ import (
 	"time"
 )
 
-type (
-	Emitter func(string, ...any)
-	ErrProc = func(error) error
-)
+// Emitter is the function prototype for generate [LogItem] from attributes
+// and send to a [Handler].
+type Emitter func(string, ...any)
 
 func stringify(a any) any {
 	switch v := a.(type) {
@@ -148,6 +147,9 @@ step:
 	return st
 }
 
+// NewLogger returns a log [Emitter] which is used to generate
+// log records at "normal" log level.  The use of parameter(s)
+// props are explained in the package level document.
 func NewLogger(props ...any) Emitter {
 	attr := parse(props...)
 	return func(mesg string, args ...any) {
@@ -161,10 +163,13 @@ func NewLogger(props ...any) Emitter {
 	}
 }
 
+// NewDebugger returns a log [Emitter] which is used to generate
+// log records at "debug" log level.  The use of parameter(s)
+// props are explained in the package level document.
 func NewDebugger(props ...any) Emitter {
 	attr := parse(props...)
 	return func(mesg string, args ...any) {
-		if !opt.Debug {
+		if !dbg {
 			return
 		}
 		mesg, data := format(attr, mesg, args...)
@@ -177,15 +182,18 @@ func NewDebugger(props ...any) Emitter {
 	}
 }
 
+// Log sends [LogItem] to backend [Handler].  It is used internally
+// by Emitters returned by [NewLogger] or [NewDebugger], although
+// could also be used directly.
 func Log(item LogItem) {
-	switch opt.Trace {
+	switch trc {
 	case 1:
 		item.Attr["callstack"] = trace(false)
 	case 2:
 		item.Attr["callstack"] = trace(true)
 	}
-	if opt.Filter != nil {
-		opt.Filter(&item)
+	if flt != nil {
+		flt(&item)
 	}
 	if peek != nil {
 		item.flush(peek)
@@ -195,6 +203,20 @@ func Log(item LogItem) {
 	}
 }
 
+// Assert panics if the value e is an error or boolean value false.
+// e can only be one of nil, error or boolean.  If e is nil or a
+// boolean expression evaluates to true, Assert does nothing; if e
+// is error, Assert is equivalent to
+//
+//	panic(e)
+//
+// if e is a boolean expression evaluates to false, it will panic
+// with an error, like so:
+//
+//	yal.Assert(1 == 2, "1 must be equal to %v", 1)
+//	// results in: panic(fmt.Errorf("1 must be equal to %v", 1))
+//
+// The parameter(s) ntfy is only used when e is a boolean expression.
 func Assert(e any, ntfy ...any) {
 	switch v := e.(type) {
 	case nil:
@@ -216,6 +238,16 @@ func Assert(e any, ntfy ...any) {
 	}
 }
 
+// Catch is used as a defer function which mimics try...catch logic
+// in other languages such as Java. Internally, it uses recover() to
+// catch panics, logs it (with callstack) and pass it on to h for
+// processing. h could be one of nil, *error or func(error) error.
+// If h is *error, the caught error will be stored in it and returned
+// to the caller; if it is func(error) error, the caught error will be
+// passed to that function and the return value from that function will
+// be logged instead, if it is not nil.
+//
+// The use of parameter(s) args are explained in the package level document.
 func Catch(h any, args ...any) {
 	var e error
 	switch v := recover().(type) {
@@ -233,7 +265,7 @@ func Catch(h any, args ...any) {
 		if e != nil {
 			*proc = e
 		}
-	case ErrProc:
+	case func(error) error:
 		e = proc(e)
 	default:
 		panic(fmt.Errorf("yal.Catch: invalid handler <%T>", h))
@@ -254,8 +286,8 @@ func Catch(h any, args ...any) {
 		}
 		li.Attr["callstack"] = st
 	}
-	if opt.Filter != nil {
-		opt.Filter(&li)
+	if flt != nil {
+		flt(&li)
 	}
 	if peek != nil {
 		li.flush(peek)

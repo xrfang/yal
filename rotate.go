@@ -88,6 +88,8 @@ func (rh *rotatedHandler) rotate(f *os.File) bool {
 	return true
 }
 
+// RotatedHandler saves log message to files on disk, and rotate
+// out the current log file as it reaches certain size.
 func RotatedHandler(dir string, split, keep int) (Handler, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
