@@ -19,7 +19,7 @@ type (
 	Hex32 uint32
 	// Hex64 is a uint64 value appears as hexadecimal string in log message
 	Hex64 uint64
-	// LogItem is the data structure sent to an [Emitter].
+	// LogItem is the data structure sent to a [Handler].
 	LogItem struct {
 		// when the log message is generated
 		When time.Time
