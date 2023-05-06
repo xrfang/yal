@@ -53,7 +53,7 @@ func (li *LogItem) flush(w io.Writer) (err error) {
 	}
 	defer func() { recover() }()
 	write(yml[6:8]) //'-', ' '
-	write([]byte(li.When.Format("20060102_150405.000")))
+	write([]byte(li.When.Format("20060102_150405.000Z0700")))
 	write(yml[8:]) //':', ' '
 	msg := strings.Split(trimRight(li.Mesg), "\n")
 	switch len(msg) {

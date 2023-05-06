@@ -12,7 +12,7 @@ Comparing to regular/unstructured logging, structured logging brings benefits to
 The yal package on the other hand uses YAML format to improve readability of log messages while keeping their structured nature. For example:
 
 	// log message with stack trace
-	- 20230503_214552.586: test multi-line attr
+	- 20230503_214552.586+0800: test multi-line attr
 	  attr: |
 	    hello
 	    world
@@ -27,7 +27,7 @@ The yal package on the other hand uses YAML format to improve readability of log
 	  - (/usr/local/go/src/net/http/server.go:1995) net/http.(*conn).serve
 
 	// log message with hex dump
-	- 20230503_214653.571: processing task2...
+	- 20230503_214653.571+0800: processing task2...
 	  basename: task/log
 	  key: |
 	    00000000  de ad be ef                                       |....|
@@ -69,7 +69,7 @@ While creating an [Emitter], you can add global attributes which are added to al
 
 	// the example above will generate log records look like:
 
-	- 20230505_111623.456: handling request
+	- 20230505_111623.456+0800: handling request
 	  basename: sessions/127.0.0.1
 	  method: GET
 	  key1: val1
@@ -90,7 +90,7 @@ Log message can contain placeholders for attributes, for example:
 
 	will generate log message like:
 
-	- 20230506_143918: received request from 127.0.0.1:23647
+	- 20230506_143918.372+0800: received request from 127.0.0.1:23647
 	  arg1: 3.14
 
 	Note that attributes used in templates are no longer logged separately below
