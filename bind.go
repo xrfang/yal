@@ -153,13 +153,7 @@ step:
 func NewLogger(props ...any) Emitter {
 	attr := parse(props...)
 	return func(mesg string, args ...any) {
-		mesg, data := format(attr, mesg, args...)
-		item := LogItem{
-			When: time.Now(),
-			Mesg: mesg,
-			Attr: data,
-		}
-		Log(item)
+		Log(format(attr, mesg, args...))
 	}
 }
 
@@ -169,23 +163,17 @@ func NewLogger(props ...any) Emitter {
 func NewDebugger(props ...any) Emitter {
 	attr := parse(props...)
 	return func(mesg string, args ...any) {
-		if !dbg {
-			return
+		if dbg {
+			Log(format(attr, mesg, args...))
 		}
-		mesg, data := format(attr, mesg, args...)
-		item := LogItem{
-			When: time.Now(),
-			Mesg: mesg,
-			Attr: data,
-		}
-		Log(item)
 	}
 }
 
-// Log sends [LogItem] to backend [Handler].  It is used internally
-// by Emitters returned by [NewLogger] or [NewDebugger], although
-// could also be used directly.
-func Log(item LogItem) {
+// Log makes a [LogItem] from mesg and attr, then send it to [Handler]. It
+// is used internally by Emitters returned by [NewLogger] or [NewDebugger],
+// although could also be used directly.
+func Log(mesg string, attr map[string]any) {
+	item := LogItem{time.Now(), mesg, attr}
 	switch trc {
 	case 1:
 		item.Attr["callstack"] = trace(false)
