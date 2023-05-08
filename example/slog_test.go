@@ -5,7 +5,6 @@ import (
 	"golang.org/x/exp/slog"
 	"io"
 	"testing"
-	"time"
 )
 
 func BenchmarkSlog(b *testing.B) {
@@ -33,16 +32,9 @@ func BenchmarkYal(b *testing.B) {
 }
 
 func BenchmarkYalRaw(b *testing.B) {
-	b.StopTimer()
-	now := time.Now()
 	attr := map[string]any{"a": "1", "b": "2"}
-	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		yal.Log(yal.LogItem{
-			When: now,
-			Mesg: "this is a test",
-			Attr: attr,
-		})
+		yal.Log("this is a test", attr)
 	}
 	return
 }

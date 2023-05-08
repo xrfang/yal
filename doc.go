@@ -181,7 +181,7 @@ Simple benchmark shows that without using stack tracing, yal is twice as fast as
 	cpu: Intel(R) Core(TM) i5-7600 CPU @ 3.50GHz
 	BenchmarkSlog-4     	 1481678	       806.0 ns/op	       0 B/op	       0 allocs/op
 	BenchmarkYal-4      	 3206766	       371.2 ns/op	     434 B/op	       4 allocs/op
-	BenchmarkYalRaw-4   	32044741	       35.95 ns/op	      48 B/op	       1 allocs/op
+	BenchmarkYalRaw-4   	32044741	       69.81 ns/op	      48 B/op	       1 allocs/op
 	PASS
 	ok  	yal	4.781s
 
